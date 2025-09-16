@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-link"></i> URL Shortener</h1>
+                <p>Shorten your URLs and track their performance</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- URL Shortening Section -->
+            <section class="url-shortener-section">
+                <div class="card">
+                    <h2><i class="fas fa-compress-arrows-alt"></i> Shorten URL</h2>
+                    <form id="shortenForm" class="shorten-form">
+                        <div class="input-group">
+                            <input 
+                                type="url" 
+                                id="longUrl" 
+                                placeholder="Enter your long URL here..." 
+                                required
+                                class="url-input"
+                            >
+                            <button type="submit" class="btn btn-primary" id="shortenBtn">
+                                <i class="fas fa-magic"></i> Shorten
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Result Section -->
+                    <div id="resultSection" class="result-section hidden">
+                        <div class="result-card">
+                            <h3><i class="fas fa-check-circle"></i> Success!</h3>
+                            <div class="url-result">
+                                <label>Short URL:</label>
+                                <div class="short-url-container">
+                                    <input type="text" id="shortUrl" readonly class="short-url-input">
+                                    <button id="copyBtn" class="btn btn-copy">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="url-info">
+                                <p><strong>Original URL:</strong> <span id="originalUrl"></span></p>
+                                <p><strong>Created:</strong> <span id="createdAt"></span></p>
+                                <p><strong>Short ID:</strong> <span id="shortId"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- URL Management Section -->
+            <section class="url-management-section">
+                <div class="card">
+                    <div class="section-header">
+                        <h2><i class="fas fa-cogs"></i> URL Management</h2>
+                        <button id="refreshBtn" class="btn btn-secondary">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                    
+                    <!-- Search and Filter -->
+                    <div class="search-filter">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchInput" placeholder="Search URLs...">
+                        </div>
+                    </div>
+
+                    <!-- URL List -->
+                    <div id="urlList" class="url-list">
+                        <div class="loading" id="loadingSpinner">
+                            <i class="fas fa-spinner fa-spin"></i> Loading...
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Statistics Section -->
+            <section class="statistics-section">
+                <div class="card">
+                    <h2><i class="fas fa-chart-bar"></i> Statistics</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-link"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="totalUrls">0</h3>
+                                <p>Total URLs</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-mouse-pointer"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="totalClicks">0</h3>
+                                <p>Total Clicks</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-day"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="todayClicks">0</h3>
+                                <p>Today's Clicks</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-fire"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="mostPopular">-</h3>
+                                <p>Most Popular</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2025 URL Shortener. Built with ❤️ using Go microservices.</p>
+        </footer>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <div class="toast-content">
+            <span id="toastMessage"></span>
+            <button id="toastClose" class="toast-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal hidden">
+        <div class="modal-content">
+            <h3><i class="fas fa-exclamation-triangle"></i> Confirm Action</h3>
+            <p id="confirmMessage"></p>
+            <div class="modal-actions">
+                <button id="confirmCancel" class="btn btn-secondary">Cancel</button>
+                <button id="confirmOk" class="btn btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

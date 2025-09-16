@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stats-service
+  namespace: url-shortener
+  labels:
+    app: stats-service
+    managed-by: portainer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: stats-service
+  template:
+    metadata:
+      labels:
+        app: stats-service
+    spec:
+      containers:
+        - name: stats-service
+          image: itsbaivab/url-shortener-stats:latest
+          env:
+            - name: DB_HOST
+              value: postgres.url-shortener.svc.cluster.local
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: database
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: PORT
+              value: "8003"
+          ports:
+            - containerPort: 8003
+              name: http
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres.url-shortener.svc.cluster.local -p 5432 -U postgres; do
+                echo "Waiting for postgres..."
+                sleep 2
+              done
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stats-service
+  namespace: url-shortener
+  labels:
+    app: stats-service
+    managed-by: portainer
+spec:
+  selector:
+    app: stats-service
+  ports:
+    - port: 8003
+      targetPort: 8003
+      name: http
+  type: ClusterIP
+---
+

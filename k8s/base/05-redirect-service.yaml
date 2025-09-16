@@ -1,0 +1,68 @@
+# Redirect Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redirect-service
+  namespace: url-shortener
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redirect-service
+  template:
+    metadata:
+      labels:
+        app: redirect-service
+    spec:
+      containers:
+        - name: redirect-service
+          image: itsbaivab/redirect-service:latest
+          env:
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: postgres
+            - name: DB_NAME
+              value: urlshortener
+            - name: RABBITMQ_URL
+              value: amqp://admin:admin@rabbitmq:5672/
+            - name: SERVICE_PORT
+              value: "8002"
+          ports:
+            - containerPort: 8002
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+---
+# Redirect Service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redirect-service
+  namespace: url-shortener
+spec:
+  selector:
+    app: redirect-service
+  ports:
+    - port: 8002
+      targetPort: 8002

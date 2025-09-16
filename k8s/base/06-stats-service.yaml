@@ -1,0 +1,68 @@
+# Stats Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stats-service
+  namespace: url-shortener
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: stats-service
+  template:
+    metadata:
+      labels:
+        app: stats-service
+    spec:
+      containers:
+        - name: stats-service
+          image: itsbaivab/stats-service:latest
+          env:
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: postgres
+            - name: DB_NAME
+              value: urlshortener
+            - name: RABBITMQ_URL
+              value: amqp://admin:admin@rabbitmq:5672/
+            - name: SERVICE_PORT
+              value: "8003"
+          ports:
+            - containerPort: 8003
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+---
+# Stats Service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: stats-service
+  namespace: url-shortener
+spec:
+  selector:
+    app: stats-service
+  ports:
+    - port: 8003
+      targetPort: 8003

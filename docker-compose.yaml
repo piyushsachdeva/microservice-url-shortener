@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # Databases
+  postgres:
+    image: postgres:15-alpine
+    container_name: url-shortener-postgres
+    environment:
+      POSTGRES_DB: urlshortener
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - url-shortener-network
+
+  # API Gateway / Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: url-shortener-gateway
+    ports:
+      - "8080:80"
+    volumes:
+      - ./configs/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - link-service
+      - redirect-service
+      - stats-service
+    networks:
+      - url-shortener-network
+    restart: unless-stopped
+
+  # Microservices
+  link-service:
+    build:
+      context: .
+      dockerfile: ./services/link-service/Dockerfile
+    container_name: url-shortener-link-service
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=urlshortener
+      - SERVICE_PORT=8001
+    ports:
+      - "8001:8001"
+    depends_on:
+      - postgres
+    networks:
+      - url-shortener-network
+    restart: unless-stopped
+
+  redirect-service:
+    build:
+      context: .
+      dockerfile: ./services/redirect-service/Dockerfile
+    container_name: url-shortener-redirect-service
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=urlshortener
+      - SERVICE_PORT=8002
+    ports:
+      - "8002:8002"
+    depends_on:
+      - postgres
+    networks:
+      - url-shortener-network
+    restart: unless-stopped
+
+  stats-service:
+    build:
+      context: .
+      dockerfile: ./services/stats-service/Dockerfile
+    container_name: url-shortener-stats-service
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=urlshortener
+      - SERVICE_PORT=8003
+    ports:
+      - "8003:8003"
+    depends_on:
+      - postgres
+    networks:
+      - url-shortener-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    container_name: url-shortener-frontend
+    ports:
+      - "3000:80"
+    networks:
+      - url-shortener-network
+    depends_on:
+      - nginx
+
+volumes:
+  postgres_data:
+
+networks:
+  url-shortener-network:
+    driver: bridge

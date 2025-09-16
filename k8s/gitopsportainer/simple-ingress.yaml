@@ -1,0 +1,68 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: url-shortener-simple-ingress
+  namespace: url-shortener
+  labels:
+    app: url-shortener
+    managed-by: portainer
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location ~ ^/r/(.*)$ {
+        rewrite ^/r/(.*)$ /redirect/$1 break;
+        proxy_pass http://redirect-service.url-shortener.svc.cluster.local:8002;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+      # Exact health check path for stats
+      location = /api/stats/health {
+        rewrite ^/api/stats/health$ /health break;
+        proxy_pass http://stats-service.url-shortener.svc.cluster.local:8003;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+      # Proxy all other stats API paths to stats-service
+      location ^~ /api/stats {
+        rewrite ^/api/stats/?(.*)$ /stats break;
+        proxy_pass http://stats-service.url-shortener.svc.cluster.local:8003;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+      location = /api/generate {
+        rewrite ^/api/generate$ /generate break;
+        proxy_pass http://link-service.url-shortener.svc.cluster.local:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+      location = /api/links {
+        rewrite ^/api/links$ /links break;
+        proxy_pass http://link-service.url-shortener.svc.cluster.local:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+      location = /api/delete {
+        rewrite ^/api/delete$ /delete break;
+        proxy_pass http://link-service.url-shortener.svc.cluster.local:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      }
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          # Frontend - serves static files and handles everything else
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

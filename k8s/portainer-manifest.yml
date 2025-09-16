@@ -1,0 +1,669 @@
+# URL Shortener - Complete Kubernetes Manifest for Portainer
+# Deploy this entire stack in Portainer using "Deploy from git repository" or "Deploy from manifest"
+#
+# Components included:
+# - Namespace: default (using default namespace)
+# - PostgreSQL Database (StatefulSet with persistent storage)
+# - RabbitMQ Message Queue (Deployment with persistent storage)
+# - 4 Microservices: Link, Redirect, Stats, Notification
+# - Nginx API Gateway (LoadBalancer service)
+# - Frontend Application
+# - All necessary ConfigMaps and Services
+#
+# External Access:
+# - Get the LoadBalancer IP: kubectl get svc nginx-gateway
+# - Frontend: http://<EXTERNAL-IP>/
+# - API: http://<EXTERNAL-IP>/api/
+#
+# Created: August 29, 2025
+# ---
+
+# PostgreSQL StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: default
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_DB
+              value: urlshortener
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: init-script
+          configMap:
+            name: postgres-init
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: default
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  clusterIP: None
+
+---
+# PostgreSQL Init ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: default
+data:
+  init.sql: |
+    -- Create database schema for URL shortener microservices
+
+    -- Create links table
+    CREATE TABLE IF NOT EXISTS links (
+        id VARCHAR(255) PRIMARY KEY,
+        original_url TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+
+    -- Create stats table
+    CREATE TABLE IF NOT EXISTS stats (
+        id VARCHAR(255) PRIMARY KEY,
+        link_id VARCHAR(255) NOT NULL REFERENCES links(id) ON DELETE CASCADE,
+        platform INTEGER DEFAULT 0,
+        user_agent TEXT,
+        ip_address INET,
+        referrer TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+
+    -- Create indexes for better performance
+    CREATE INDEX IF NOT EXISTS idx_stats_link_id ON stats(link_id);
+    CREATE INDEX IF NOT EXISTS idx_stats_created_at ON stats(created_at);
+    CREATE INDEX IF NOT EXISTS idx_links_created_at ON links(created_at);
+
+    -- Insert some test data
+    INSERT INTO links (id, original_url) VALUES 
+        ('testid1', 'https://example.com/link1'),
+        ('testid2', 'https://example.com/link2'),
+        ('testid3', 'https://example.com/link3')
+    ON CONFLICT (id) DO NOTHING;
+
+    INSERT INTO stats (id, link_id, platform) VALUES 
+        ('stat1', 'testid1', 0),
+        ('stat2', 'testid2', 1),
+        ('stat3', 'testid3', 2)
+    ON CONFLICT (id) DO NOTHING;
+
+---
+# RabbitMQ Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3.12-management-alpine
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              value: admin
+            - name: RABBITMQ_DEFAULT_PASS
+              value: admin
+          ports:
+            - containerPort: 5672
+            - containerPort: 15672
+          volumeMounts:
+            - name: rabbitmq-storage
+              mountPath: /var/lib/rabbitmq
+      volumes:
+        - name: rabbitmq-storage
+          emptyDir: {}
+
+---
+# RabbitMQ Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: default
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: 5672
+    - name: management
+      port: 15672
+      targetPort: 15672
+
+---
+# Link Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: link-service
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: link-service
+  template:
+    metadata:
+      labels:
+        app: link-service
+    spec:
+      containers:
+        - name: link-service
+          image: itsbaivab/link-service:latest
+          env:
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: postgres
+            - name: DB_NAME
+              value: urlshortener
+            - name: RABBITMQ_URL
+              value: amqp://admin:admin@rabbitmq:5672/
+            - name: SERVICE_PORT
+              value: "8001"
+          ports:
+            - containerPort: 8001
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+---
+# Link Service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: link-service
+  namespace: default
+spec:
+  selector:
+    app: link-service
+  ports:
+    - port: 8001
+      targetPort: 8001
+
+---
+# Redirect Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redirect-service
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redirect-service
+  template:
+    metadata:
+      labels:
+        app: redirect-service
+    spec:
+      containers:
+        - name: redirect-service
+          image: itsbaivab/redirect-service:latest
+          env:
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: postgres
+            - name: DB_NAME
+              value: urlshortener
+            - name: RABBITMQ_URL
+              value: amqp://admin:admin@rabbitmq:5672/
+            - name: SERVICE_PORT
+              value: "8002"
+          ports:
+            - containerPort: 8002
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+---
+# Redirect Service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redirect-service
+  namespace: default
+spec:
+  selector:
+    app: redirect-service
+  ports:
+    - port: 8002
+      targetPort: 8002
+
+---
+# Stats Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stats-service
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stats-service
+  template:
+    metadata:
+      labels:
+        app: stats-service
+    spec:
+      containers:
+        - name: stats-service
+          image: itsbaivab/stats-service:latest
+          env:
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: postgres
+            - name: DB_NAME
+              value: urlshortener
+            - name: RABBITMQ_URL
+              value: amqp://admin:admin@rabbitmq:5672/
+            - name: SERVICE_PORT
+              value: "8003"
+          ports:
+            - containerPort: 8003
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+---
+# Stats Service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: stats-service
+  namespace: default
+spec:
+  selector:
+    app: stats-service
+  ports:
+    - port: 8003
+      targetPort: 8003
+
+---
+# Notification Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: itsbaivab/notification-service:latest
+          env:
+            - name: SLACK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: notification-secrets
+                  key: slack-token
+                  optional: true
+            - name: SLACK_CHANNEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: notification-secrets
+                  key: slack-channel-id
+                  optional: true
+            - name: RABBITMQ_URL
+              value: amqp://admin:admin@rabbitmq:5672/
+            - name: SERVICE_PORT
+              value: "8004"
+          ports:
+            - containerPort: 8004
+
+---
+# Notification Service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: default
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 8004
+      targetPort: 8004
+
+---
+# Notification Secrets (Optional - for Slack integration)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: notification-secrets
+  namespace: default
+type: Opaque
+data:
+  # Base64 encoded values - replace with your actual tokens
+  # To encode: echo -n "your-token" | base64
+  slack-token: eW91ci1zbGFjay10b2tlbi1oZXJl # "your-slack-token-here"
+  slack-channel-id: eW91ci1jaGFubmVsLWlkLWhlcmU= # "your-channel-id-here"
+
+---
+# Nginx Gateway ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: default
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+
+    http {
+        upstream link-service {
+            server link-service:8001;
+        }
+
+        upstream redirect-service {
+            server redirect-service:8002;
+        }
+
+        upstream stats-service {
+            server stats-service:8003;
+        }
+
+        upstream notification-service {
+            server notification-service:8004;
+        }
+
+        upstream frontend {
+            server frontend:80;
+        }
+
+        # Rate limiting
+        limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+        limit_req_zone $binary_remote_addr zone=redirect:10m rate=100r/s;
+
+        server {
+            listen 80;
+            server_name localhost;
+
+            # Health check endpoint
+            location /health {
+                return 200 "OK";
+                add_header Content-Type text/plain;
+            }
+
+            # Link generation service
+            location /api/generate {
+                limit_req zone=api burst=20 nodelay;
+                proxy_pass http://link-service/generate;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Link deletion service
+            location /api/delete {
+                limit_req zone=api burst=10 nodelay;
+                proxy_pass http://link-service/delete;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Redirect service (short URLs) - exclude health and api paths
+            location ~ ^/(?!health|api)([a-zA-Z0-9]+)$ {
+                limit_req zone=redirect burst=200 nodelay;
+                proxy_pass http://redirect-service/redirect/$1;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Stats service
+            location /api/stats {
+                limit_req zone=api burst=10 nodelay;
+                proxy_pass http://stats-service/stats;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Notification service
+            location /api/notifications {
+                limit_req zone=api burst=5 nodelay;
+                proxy_pass http://notification-service/notifications;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            # Frontend application
+            location / {
+                proxy_pass http://frontend;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                
+                # Handle CORS for frontend
+                add_header Access-Control-Allow-Origin *;
+                add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS";
+                add_header Access-Control-Allow-Headers "Content-Type, Authorization";
+                
+                if ($request_method = 'OPTIONS') {
+                    return 204;
+                }
+            }
+        }
+    }
+
+---
+# Nginx Gateway Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-gateway
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-gateway
+  template:
+    metadata:
+      labels:
+        app: nginx-gateway
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
+
+---
+# Nginx Gateway Service (LoadBalancer)
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-gateway
+  namespace: default
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx-gateway
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: itsbaivab/frontend:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: API_BASE_URL
+              value: "http://nginx-gateway"
+
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: default
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80

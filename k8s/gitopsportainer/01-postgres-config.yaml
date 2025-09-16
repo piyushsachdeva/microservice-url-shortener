@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: url-shortener
+  labels:
+    app: postgres
+    managed-by: portainer
+data:
+  init.sql: |
+    -- URL Shortener Database Schema
+    -- This file initializes the PostgreSQL database for the URL shortener service
+
+    -- Enable UUID extension for generating unique IDs
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+    -- Create the links table to store original and shortened URLs
+    CREATE TABLE IF NOT EXISTS links (
+        id VARCHAR(50) PRIMARY KEY,
+        original_url TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Create the stats table to track click analytics
+    CREATE TABLE IF NOT EXISTS stats (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        link_id VARCHAR(50) NOT NULL,
+        platform INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (link_id) REFERENCES links(id) ON DELETE CASCADE
+    );
+
+    -- Create indexes for better performance
+    CREATE INDEX IF NOT EXISTS idx_links_created_at ON links(created_at);
+    CREATE INDEX IF NOT EXISTS idx_stats_link_id ON stats(link_id);
+    CREATE INDEX IF NOT EXISTS idx_stats_created_at ON stats(created_at);
+
+    -- Insert sample data for testing (optional)
+    INSERT INTO links (id, original_url, created_at) VALUES 
+        ('testid1', 'https://example.com/link1', NOW() - INTERVAL '1 day'),
+        ('testid2', 'https://example.com/link2', NOW() - INTERVAL '2 hours'),
+        ('testid3', 'https://example.com/link3', NOW() - INTERVAL '30 minutes')
+    ON CONFLICT (id) DO NOTHING;
+
+    -- Insert sample stats
+    INSERT INTO stats (id, link_id, platform, created_at) VALUES 
+        ('stat1', 'testid1', 0, NOW() - INTERVAL '1 hour'),
+        ('stat2', 'testid2', 1, NOW() - INTERVAL '30 minutes'),
+        ('stat3', 'testid3', 2, NOW() - INTERVAL '15 minutes')
+    ON CONFLICT (id) DO NOTHING;
+---
+

@@ -1,0 +1,10 @@
+# Kubernetes namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: url-shortener
+  labels:
+    name: url-shortener
+    environment: development
+  annotations:
+    description: "Namespace for URL Shortener microservices application"

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener - Demo</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .demo-container {
+            background: white;
+            border-radius: 16px;
+            padding: 3rem;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            color: #2d3748;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-desc {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            margin: 1rem 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .status-item {
+            background: #edf2f7;
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-value {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .tech-stack {
+            background: #f0f4f8;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .tech-stack h3 {
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+
+        .tech-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .tech-tag {
+            background: #667eea;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .footer-info {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .demo-container {
+                padding: 2rem;
+                margin: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+                margin: 0.5rem 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="logo">
+            <i class="fas fa-link"></i>
+        </div>
+        
+        <h1>URL Shortener</h1>
+        <p class="subtitle">
+            A modern, microservices-based URL shortening application built with Go
+        </p>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-compress-arrows-alt"></i>
+                </div>
+                <div class="feature-title">URL Shortening</div>
+                <div class="feature-desc">
+                    Convert long URLs into short, memorable links with custom analytics
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div class="feature-title">Analytics</div>
+                <div class="feature-desc">
+                    Track clicks, view statistics, and monitor performance in real-time
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-bell"></i>
+                </div>
+                <div class="feature-title">Notifications</div>
+                <div class="feature-desc">
+                    Slack integration for instant notifications and alerts
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <div class="feature-title">Responsive UI</div>
+                <div class="feature-desc">
+                    Modern, mobile-friendly interface that works on all devices
+                </div>
+            </div>
+        </div>
+
+        <div class="status-grid">
+            <div class="status-item">
+                <div class="status-title">Architecture</div>
+                <div class="status-value">Microservices with Docker</div>
+            </div>
+            <div class="status-item">
+                <div class="status-title">Database</div>
+                <div class="status-value">PostgreSQL + Redis Cache</div>
+            </div>
+            <div class="status-item">
+                <div class="status-title">Messaging</div>
+                <div class="status-value">RabbitMQ</div>
+            </div>
+            <div class="status-item">
+                <div class="status-title">Monitoring</div>
+                <div class="status-value">Prometheus + Grafana</div>
+            </div>
+        </div>
+
+        <div>
+            <a href="/index.html" class="btn">
+                <i class="fas fa-rocket"></i>
+                Launch Application
+            </a>
+            <a href="http://localhost:8080/health" class="btn btn-secondary" target="_blank">
+                <i class="fas fa-heart"></i>
+                Check API Health
+            </a>
+        </div>
+
+        <div class="tech-stack">
+            <h3><i class="fas fa-code"></i> Technology Stack</h3>
+            <div class="tech-tags">
+                <span class="tech-tag">Go</span>
+                <span class="tech-tag">PostgreSQL</span>
+                <span class="tech-tag">Redis</span>
+                <span class="tech-tag">RabbitMQ</span>
+                <span class="tech-tag">Docker</span>
+                <span class="tech-tag">Nginx</span>
+                <span class="tech-tag">Prometheus</span>
+                <span class="tech-tag">Grafana</span>
+                <span class="tech-tag">Microservices</span>
+                <span class="tech-tag">REST API</span>
+            </div>
+        </div>
+
+        <div class="footer-info">
+            <p>
+                <strong>Quick Start:</strong> Run <code>./start-app.sh</code> to start all services<br>
+                <strong>API Gateway:</strong> <a href="http://localhost:8080" target="_blank">http://localhost:8080</a><br>
+                <strong>Frontend:</strong> <a href="http://localhost:3000" target="_blank">http://localhost:3000</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
