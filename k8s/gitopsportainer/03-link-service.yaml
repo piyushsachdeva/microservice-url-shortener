@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: link-service
-          image: itsbaivab/url-shortener-link:latest
+          image: piyushsachdeva/url-shortener-link:latest
           env:
             - name: DB_HOST
               value: postgres.url-shortener.svc.cluster.local
