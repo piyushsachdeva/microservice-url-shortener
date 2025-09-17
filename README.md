@@ -217,12 +217,6 @@ cd k8s/gitopsportainer/
 # Option A: Automatic deployment (recommended)
 ./deploy.sh
 
-# Option B: Using Kustomize
-kubectl apply -k .
-
-# Option C: Manual step-by-step
-./install-ingress-controller.sh
-kubectl apply -f .
 ```
 
 **Portainer Demo Features:**
