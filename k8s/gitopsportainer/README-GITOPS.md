@@ -133,10 +133,4 @@ kubectl apply -f ingress-controller.yaml
 kubectl apply -f simple-ingress.yaml
 ```
 
-```bash
-# Deploy everything with kustomize
-kubectl apply -k .
 
-# Check deployment status
-kubectl get all -n url-shortener
-```
