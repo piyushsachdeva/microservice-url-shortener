@@ -80,30 +80,10 @@ example key looks like this
 ```
 Congatulations! You now have Portainer running on AKS.
 
-## 📁 **File Structure Overview**
-
-This directory contains all Kubernetes manifests organized by deployment order:
-
-```
-k8s/gitopsportainer/
-├── 00-namespace.yaml              # Creates url-shortener namespace
-├── 00-secrets.yaml                # Database credentials and app secrets
-├── 01-postgres-config.yaml        # PostgreSQL initialization SQL
-├── 02-postgres.yaml               # PostgreSQL StatefulSet with persistent storage
-├── 03-link-service.yaml           # Link generation microservice
-├── 04-redirect-service.yaml       # URL redirection microservice
-├── 05-stats-service.yaml          # Analytics and statistics microservice
-├── 07-frontend.yaml               # Frontend web application with nginx
-├── deploy.sh                      # Automated deployment script
-├── ingress-controller.yaml        # NGINX Ingress Controller installation
-├── simple-ingress.yaml            # Basic ingress configuration
-├── kustomization.yaml             # Kustomize configuration file
-└── README-GITOPS.md              # This comprehensive guide
-```
 
 ## 🚀 **Deployment Instructions**
 
-### **Option 1: Automated Deployment (Recommended)**
+### **Option 1: Automated Deployment **
 
 ```bash
 # Navigate to GitOps directory
@@ -116,29 +96,8 @@ cd k8s/gitopsportainer/
 kubectl get pods -n url-shortener -w
 ```
 
-```bash
-# 1. Create namespace and secrets
-kubectl apply -f 00-namespace.yaml
-kubectl apply -f 00-secrets.yaml
+### **GitOps through Portainer**
 
-# 2. Deploy PostgreSQL database
-kubectl apply -f 01-postgres-config.yaml
-kubectl apply -f 02-postgres.yaml
-
-# Wait for PostgreSQL to be ready
-kubectl wait --for=condition=ready pod/postgres-0 -n url-shortener --timeout=300s
-
-# 3. Deploy microservices
-kubectl apply -f 03-link-service.yaml
-kubectl apply -f 04-redirect-service.yaml
-kubectl apply -f 05-stats-service.yaml
-
-# 4. Deploy frontend
-kubectl apply -f 07-frontend.yaml
-
-# 5. Optional: Deploy ingress
-kubectl apply -f ingress-controller.yaml
-kubectl apply -f simple-ingress.yaml
-```
+- Go to portainer dashboard and deploy your apps
 
 
